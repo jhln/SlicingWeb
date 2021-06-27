@@ -1,68 +1,80 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE DataKinds           #-}
 
 module Frontend where
 
+import Control.Lens
 import Control.Monad
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
+
+import Reflex.Dom
+
 import Language.Javascript.JSaddle (eval, liftJSM)
 
 import Obelisk.Frontend
-import Obelisk.Configs
 import Obelisk.Route
 import Obelisk.Generated.Static
 
---import Reflex.Dom.Core (run,Run(..))
-import Reflex.Dom
-
-import Common.Api
 import Common.Route
 
-
--- This runs in a monad that can be run on the client or the server.
--- To run code in a pure client or pure server context, use one of the
--- `prerender` functions.
+-- "MAIN function"
 frontend :: Frontend (R FrontendRoute)
 frontend = Frontend
-  { _frontend_head = do
-      el "title" $ text "Obelisk Minimal Example"
+  { -- HTML <head> tag contents
+    _frontend_head = do
+      -- title of the tab in the browser
+      el "title" $ text "Slicing Example"
+
+      -- add stylesheet static/main.css to website
       elAttr "link" ("href" =: static @"main.css" <> "type" =: "text/css" <> "rel" =: "stylesheet") blank
-  , _frontend_body = do
-      {-el "h1" $ text "Hi Obelisk!"
-      el "p" $ text $ T.pack commonStuff
+
+      -- add d3js to website
+      elAttr "script" ("src" =: "https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js") blank
+
+      -- add static/d3prep.js to website
+      elAttr "script" ("src" =: static @"d3prep.js" <> "type" =: "text/javascript") blank
       
-      -- `prerender` and `prerender_` let you choose a widget to run on the server
-      -- during prerendering and a different widget to run on the client with
-      -- JavaScript. The following will generate a `blank` widget on the server and
-      -- print "Hello, World!" on the client.
-      prerender_ blank $ liftJSM $ void $ eval ("console.log('Hello, World!')" :: T.Text)
+  , -- HTML <body> tag contents
+    _frontend_body = do
+      -- header/title of the website
+      elAttr "div" ("id" =: "header") $ text "Slicing Example"
 
-      elAttr "img" ("src" =: static @"obelisk.jpg") blank
-      el "div" $ do
-        exampleConfig <- getConfig "common/example"
-        case exampleConfig of
-          Nothing -> text "No config file found in config/common/example"
-          Just s -> text $ T.decodeUtf8 s-}
-      something
-      return ()
+      -- the code area on the left side
+      programText <- textAreaElement $ 
+                        def & initialAttributes .~ ("id" =: "codeMirror")
+
+      -- the empty diagram placeholder on the right side
+      elAttr "diagram" ("id" =: "diagram") blank
+     
+      -- set code area to initial text 
+      executeJS "document.getElementById(\"codeMirror\").value=JSON.stringify(sampleTreeData)"
+                
+      -- listens for changes in programText and invokes showProgram (updating the tree)
+      void $ dyn (showProgram <$> (value $ programText))
   }
-  
-something :: (DomBuilder t m,PostBuild t m) => m ()
-something = el "div" $ do
-    
-   elAttr "p" ("id" =: "myText") $ text $ T.pack "this is my text"
-   t <- inputElement $ def
-       & initialAttributes .~
-          ("id" =: "myInput")
-   el "p" $ dynText $ (T.pack . fromProg . myParser) 
-            <$> (_inputElement_value $ t)
 
+-- helper function to execute javascript clientside
+executeJS :: (Prerender js t m, Monad m) => T.Text -> m ()
+executeJS t = prerender_ blank $ liftJSM $ void $ eval t
 
-newtype Program = Program { fromProg :: String }
-
-myParser :: T.Text -> Program
-myParser a 
-  | T.length a == 0 = Program ""
-  | otherwise = Program $ "program {" ++ (T.unpack a) ++ "}"
+-- function that takes the input from the text area, transforms it and updates the tree
+-- TODO: use `t` to parse and construct the tree to be shown
+-- use the parse and convertToTree methods for this
+showProgram :: (Prerender js t m, Monad m) => T.Text -> m ()
+showProgram t = do
+    -- filter for valid programs
+    when ((T.length t) > 0) $ 
+        -- this tries to parse and convert the program text to a or shows the resulting error.
+        -- NOTE: `convertToTree` MUST produce a valid json otherwise there will be a parsing error
+        -- breaking the application
+        executeJS $ "try { showTree(" <> (convertToTree . parse $ t) <> "); }\
+                    \catch (e) {console.log(\"error\",e);}"
+    return()
+  where
+      parse t' = t'
+      convertToTree t' = t'

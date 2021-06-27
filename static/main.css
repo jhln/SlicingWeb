@@ -1,3 +1,53 @@
-p {
-  color: red;  
+/* Styling of the website */
+
+html, body{
+  height:100%;
+  width:100%;
+  margin:0;
+  padding:0;
+}
+#header {
+display:block;
+padding-left:20px;
+height:5%;
+width:100%;
+font: 24pt sans-serif;
+
+}
+
+#codeMirror {
+  display:inline-block;
+  height:92.5%;
+  width:45%;
+  margin:0;
+  padding:10px;
+  font: 20pt;
+  font-family: monospace;
+}
+
+#diagram {
+  display:inline-block;
+  height:95%;
+  width:50%;
+}
+
+/* styling for tree */
+.node {
+  cursor: pointer;
+}
+
+.node circle {
+fill: #fff;
+stroke: steelblue;
+stroke-width: 3px;
+}
+
+.node text {
+font: 12px sans-serif;
+}
+
+.link {
+fill: none;
+stroke: #ccc;
+stroke-width: 2px;
 }
