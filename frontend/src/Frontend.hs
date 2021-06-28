@@ -89,7 +89,8 @@ showProgram t = do
         executeJS $ "try { showTree(" <> (convertToTree . parse $ t) <> "); }\
                     \catch (e) {console.log(\"error\",e);}"
   where
-      parse t' = t
+      parse t' = t'
+        -- E.decodeUtf8  $ A.encode $  Node "asf" Nothing Nothing
       convertToTree t' = t'
 
 data GraphNode  = Node { name :: T.Text
