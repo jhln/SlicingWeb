@@ -1,6 +1,4 @@
 // mainly stolen/adapted from https://bl.ocks.org/d3noob/8375092
-// no idea how it actually works but the code is quite self explanatory 
-// if changes need to be done
 var sampleTreeData = [
   {
     "name": "Top Level",
