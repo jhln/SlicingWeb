@@ -1,9 +1,9 @@
-module Common.TestBackward where
+module TestBackward where
 
-import Common.Grammar
-import Common.Eval
-import Common.BackwardSlice
-import Common.TestExpr
+import Grammar
+import Eval
+import BackwardSlice
+import TestExpr
 
 
 arithTestTrace :: ArithTrace

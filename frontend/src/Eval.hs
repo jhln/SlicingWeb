@@ -1,6 +1,6 @@
-module Common.Eval where
+module Eval where
 
-import Common.Grammar
+import Grammar
 
 
 readFromStore :: State -> Var -> Maybe ArithVal

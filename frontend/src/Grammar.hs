@@ -1,4 +1,4 @@
-module Common.Grammar where
+module Grammar where
 
 type Var        = String   
 --                deriving (Eq, Ord, Show)

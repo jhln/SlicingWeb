@@ -1,8 +1,8 @@
-module Common.TestExpr where
+module TestExpr where
 
-import Common.Grammar
-import Common.Eval
-import Common.ForwardSlice
+import Grammar
+import Eval
+import ForwardSlice
 
 -- z := z + 1
 zAsn :: Command  

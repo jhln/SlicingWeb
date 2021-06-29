@@ -41,6 +41,7 @@ var diagonal;
 var svg;
 
 function showTree(treeData){
+    console.log("hi", treeData);
     width = document.getElementById("diagram").offsetWidth-20; //960 - margin.right - margin.left,
     height = document.getElementById("diagram").offsetHeight-20; //500 - margin.top - margin.bottom;
     tree = d3.layout.tree()

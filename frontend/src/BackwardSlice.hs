@@ -1,7 +1,7 @@
-module Common.BackwardSlice where
+module BackwardSlice where
 
-import Common.Grammar
-import Common.Eval
+import Grammar
+import Eval
 
 
 joinVarInStore :: (Var, Maybe ArithVal) -> State -> State

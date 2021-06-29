@@ -1,8 +1,8 @@
 {-# LANGUAGE LambdaCase #-}
-module Common.Parser where
+module Parser where
 
 import Text.Parsec
-import Common.Grammar
+import Grammar
 import Data.Functor.Identity
 
 import Control.Monad (void)
@@ -26,7 +26,7 @@ clearWhiteSpace = replace "\n" ""
 
 -- | helper function for the 'clearWhiteSpace' application
 replace :: String -> String -> String -> String
-replace _ _ [] = []
+replace _ replacement [] = []
 replace pattern replacement str
     | pattern == (take (length pattern) str)
         = replacement ++ (replace pattern replacement 
@@ -167,6 +167,12 @@ boolExprNested'  = choice
                 , bool'
 --                , var' 
                 , do{
+                    string "(!";
+                    b <- boolExprNested';
+                    string ")";
+                    return $ Not b
+                    }
+                , do{
                     string "(";
                     a1 <- arithExprNested';
                     op <- choice 
@@ -191,8 +197,11 @@ boolExprNested'  = choice
 commandsProb1 :: Either ParseError Command
 commandsProb1 = runWith commandsExpr' "skip;skit := (a+1);skip"
 commandsProb2 :: Either ParseError Command
-commandsProb2 = runWith commandsExpr' "while(a=3)do{b:=(b-1)};if true then {a:=1}else{a:=2};skip"
-commandProb3 = runWith commandsExpr'
+commandsProb2 = runWith commandsExpr' "skip; while(a=3)do{b:=(b-1)};if true then {a:=1}else{a:=2};skip"
+commandsProb21 = runWith commandsExpr' "skip; while(a=3)do{b:=(b-1)};if true then {a:=1}else{a:=2};skip"
+commandsProb31 = runWith commandsExpr'
+    "while ( b <= r ) do { q := (q + 1); r := (r - b)}; if  (! (r = 0))  then {res := 0} else {res := 1}"
+commandsProb3 = runWith commandsExpr'
     "r := a; while ( b <= r ) do { q := (q + 1); r := (r - b)}; if ( ! (r = 0) ) then {res := 0} else {res := 1}"
 commandsProb4 = runWith commandsExpr'
     "i:=0;r:= 0;while(i<=n)do{r:=(r+i);i:=(i+1)}"

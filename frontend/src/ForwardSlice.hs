@@ -1,7 +1,7 @@
-module Common.ForwardSlice where
+module ForwardSlice where
 
-import Common.Grammar
-import Common.Eval
+import Grammar
+import Eval
 
 
 fwrdA :: ArithTrace -> State -> ArithExpr -> ArithExpr

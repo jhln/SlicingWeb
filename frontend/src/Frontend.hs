@@ -13,6 +13,7 @@ module Frontend where
 import Control.Lens
 import Control.Monad
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 
 import Reflex.Dom
 
@@ -23,11 +24,13 @@ import Obelisk.Route
 import Obelisk.Generated.Static
 
 import Common.Route
-import Common.Smt
-import Common.Grammar
+import Smt
+import Grammar
+import Parser
 
 import qualified GHC.Generics as G
-import qualified Data.Aeson as A
+import qualified Data.Aeson.Text as A
+import qualified Data.Aeson.Types as A
 import qualified Data.Text.Encoding as E
 
 -- "MAIN function"
@@ -89,21 +92,50 @@ showProgram t = do
         executeJS $ "try { showTree(" <> (convertToTree . parse $ t) <> "); }\
                     \catch (e) {console.log(\"error\",e);}"
   where
-      parse t' = t'
-        -- E.decodeUtf8  $ A.encode $  Node "asf" Nothing Nothing
-      convertToTree t' = t'
+      parse t' =  $ unpack t
+      -- L [Node "TopLevel" "null" []]
+      -- [{"name":"Top Level","parent":"null"}]
+        --TL.toStrict $ A.encodeToLazyText $ Node "TopLevel" (Just "null")
+      --T "asf" "Nothing" 
+      convertToTree t' = TL.toStrict $ A.encodeToLazyText ex1
+
+-- hard coded data example
+--[ { "name":"Top Level"
+--  , "parent":"null"
+--  , "children":
+--    [ { "name":"Level 2: A"
+--      , "parent":"Top Level"
+--      , "children":
+--        [ { "name":"Son of A"
+--          , "parent":"Level 2: A"}
+--        , { "name":"Daughter of A"
+--          , "parent":"Level 2: A"}]}
+--    , { "name":"Level 2: B"
+--      , "parent":"Top Level"}]}]
+ex1 = L [ Node "Top Level" "null"
+          [ Node "Level 2:A" "Top Level"
+            [ Node "Son of A" "Level 2: A"
+              []
+            , Node "Daughter of A" "Level 2: A"
+              []]
+          , Node "Level 2:B" "Top Level"
+            []]]
+
+
+newtype GNList = L [GraphNode]
+  deriving (Show, Eq, G.Generic, A.FromJSON, A.ToJSON)
 
 data GraphNode  = Node { name :: T.Text
-                      , parent :: Maybe T.Text
-                      , children :: Maybe [GraphNode] }
+                      , parent :: T.Text
+                      , children :: [GraphNode]
+                      }
   deriving (Show,Eq,G.Generic)
 
 instance A.FromJSON GraphNode
 instance A.ToJSON GraphNode
 
-
-convertToJSON :: ArithExpr -> GraphNode
-convertToJSON  AHole = Node "AHole" Nothing Nothing
+-- convertToJSON :: ArithExpr -> GraphNode
+-- convertToJSON  AHole = Node "AHole" Nothing Nothing
 
 
 
@@ -122,13 +154,13 @@ convertToJSON  AHole = Node "AHole" Nothing Nothing
 
 
 exprToString :: String -> ArithExpr -> T.Text
-exprToString parent AHole = 
+exprToString parent AHole =
   "[{\"name\":\"Top Level: " <> T.pack "AHole" <> " \",\"parent\":\"null\"}]"
-exprToString parent (Num i) = 
+exprToString parent (Num i) =
   "[{\"name\":\"Top Level: " <> T.pack (show i)  <> " \",\"parent\":\"null\"}]"
-exprToString parent (Var v) = 
+exprToString parent (Var v) =
   "[{\"name\":\"Top Level: " <> T.pack v  <> " \",\"parent\":\"null\"}]"
-exprToString parent (Add a1 a2) = 
+exprToString parent (Add a1 a2) =
   "[{\"name\":\"Top Level: ADD \",\"parent\":\"null\",\"children\":[{\"name\":\"Level 2: B\",\"parent\":\"Top Level\"}]}]"
 
 

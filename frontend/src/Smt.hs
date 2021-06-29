@@ -1,7 +1,7 @@
-module Common.Smt where
+module Smt where
 
-import Common.Grammar
-import Common.Parser
+import Grammar
+import Parser
 
 data Protocol = Program 
                   Status
