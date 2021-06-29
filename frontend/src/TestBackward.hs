@@ -4,6 +4,7 @@ import Grammar
 import Eval
 import BackwardSlice
 import TestExpr
+import Smt
 
 
 arithTestTrace :: ArithTrace
@@ -40,18 +41,33 @@ orgInState = makeState
 --    else
 --        {res := 1}
 
+
+--  Functional programs that explain their work
+--  https://arxiv.org/pdf/1907.05818.pdf
+--------------------Vorzeigen -----------------------------
+progStr :: String
+progStr = "r := a; while ( b <= r ) do { q := (q + 1); r := (r - b)}; if ( ! (r = 0) ) then {res := 0} else {res := 1}"
 prog :: Command
 prog = 
     Seq 
         rAsn 
         (Seq whlB ifR)
 
+strToComTest :: Comand
+strToComTest = extractCommands progStr
+strToComTestAnswer :: Comand
+strToComTestAnswer = prog
 
-progTest :: (State, Command)
-progTest = bwrdC (fst $ evalC orgInState prog) orgBwrdState 
+-----------Eval & Backward from Paper ---------------------
+evalTest :: (CommandTrace, State)
+evalTest = evalC orgInState prog
+bwrdTest :: (State, Command)
+bwrdTest = bwrdC (fst $ evalC orgInState prog) orgBwrdState 
+
 
 progTestAnswer :: (State, Command)
 progTestAnswer = (Store (Store (Store (Store (Store Empty "a" (Just 4)) "res" Nothing) "q" Nothing) "b" (Just 2)) "r" Nothing,Seq (Assign "r" (Var "a")) (Seq (While (LEq (Var "b") (Var "r")) (Seq CHole (Assign "r" (Sub (Var "r") (Var "b"))))) (If (Not (Eq (Var "r") (Num 0))) CHole (Assign "res" (Num 1)))))
+
 
 
 -- q→2,r→0,res→1,a→4,b→2

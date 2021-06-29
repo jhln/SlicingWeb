@@ -13,10 +13,7 @@ instance Show ArithExpr where
     show (Sub a1 a2) = show a1 ++ " - " ++ show a2
     show (Num i) = show i
     show (Var v) = v
-    show (AHole) = "AHole"
     
--- order instance fraglich ob nicht besser per hand?
--- wie stelle ich Var var typen her?
 
 data BoolExpr   = BHole
 --                | Truth 
