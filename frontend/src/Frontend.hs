@@ -24,9 +24,12 @@ import Obelisk.Route
 import Obelisk.Generated.Static
 
 import Common.Route
+
 import Smt
-import Grammar
+import qualified Grammar as G
 import Parser
+import Eval
+import qualified TestBackward as B
 
 import qualified GHC.Generics as G
 import qualified Data.Aeson.Text as A
@@ -89,15 +92,55 @@ showProgram t = do
         -- breaking the application
         {-executeJS $ "try { showTree(" <> (convertToTree . parse $ t) <> "); }\
                     \catch (e) {console.log(\"error\",e);}"-}
-        executeJS $ "try { showTree(" <> (convertToTree . parse $ t) <> "); }\
+        executeJS $ "try { showTree(" <> (convertToTree . exec . parse $ t) <> "); }\
                     \catch (e) {console.log(\"error\",e);}"
+
+parse :: T.Text -> G.Command
+parse t = extractCommands
+        $ T.unpack progStr
+exec :: G.Command -> (G.CommandTrace, G.State)
+exec = evalC orgInState
+-- L [Node "TopLevel" "null" []]
+-- [{"name":"Top Level","parent":"null"}]
+--TL.toStrict $ A.encodeToLazyText $ Node "TopLevel" (Just "null")
+--T "asf" "Nothing" 
+convertToTree :: (G.CommandTrace, G.State) -> T.Text
+convertToTree (t,s) =
+  TL.toStrict
+  $ A.encodeToLazyText
+  $ fromCTraceToGraphNode t
   where
-      parse t' =  $ unpack t
-      -- L [Node "TopLevel" "null" []]
-      -- [{"name":"Top Level","parent":"null"}]
-        --TL.toStrict $ A.encodeToLazyText $ Node "TopLevel" (Just "null")
-      --T "asf" "Nothing" 
-      convertToTree t' = TL.toStrict $ A.encodeToLazyText ex1
+    -- (ct, st) =  evalC orgInState $ B.prog
+    -- G.Seq B.rAsn $ G.Seq G.Skip G.Skip-- G.Assign "r" (G.Var "a")  -- G.If (G.Bool True) G.Skip G.Skip
+
+progStr :: T.Text
+progStr = T.pack "r := a; while ( b <= r ) do { q := (q + 1); r := (r - b)}; if ( ! (r = 0) ) then {res := 0} else {res := 1}"
+
+
+makeState   :: [(G.Var, Maybe G.ArithVal)]
+            -> G.State
+makeState ((v,maybeVal):rest) =
+    G.Store (makeState rest) v maybeVal
+makeState [] = G.Empty
+
+-- [x -> 1, y -> 0, z -> 2]
+beginState :: G.State
+beginState = makeState
+    [ ("z", Just 2)
+    , ("y", Just 0)
+    , ("x", Just 1)
+    , ("a", Just 6)
+    , ("r", Just 4)]
+
+orgInState :: G.State
+orgInState = makeState 
+    [ ("q", Just 0)
+    , ("r", Just 0)
+    , ("res", Just 0)
+    , ("a", Just 4)
+    , ("b", Just 2)]
+
+
 
 -- hard coded data example
 --[ { "name":"Top Level"
@@ -112,8 +155,8 @@ showProgram t = do
 --          , "parent":"Level 2: A"}]}
 --    , { "name":"Level 2: B"
 --      , "parent":"Top Level"}]}]
-ex1 = L [ Node "Top Level" "null"
-          [ Node "Level 2:A" "Top Level"
+ex1 = [ Node "Top Level" "null"
+          [ Node "Level 2:A" "aha"
             [ Node "Son of A" "Level 2: A"
               []
             , Node "Daughter of A" "Level 2: A"
@@ -122,17 +165,77 @@ ex1 = L [ Node "Top Level" "null"
             []]]
 
 
-newtype GNList = L [GraphNode]
-  deriving (Show, Eq, G.Generic, A.FromJSON, A.ToJSON)
+fromCTraceToGraphNode :: G.CommandTrace -> [GraphNode]
+fromCTraceToGraphNode  G.TSkip
+  = [Node "Skip" "" []]
+fromCTraceToGraphNode (G.TAssign v a)
+  = [Node ("Assign " <> T.pack v <> " to ")  "" $ fromATraceToGraphNode a]
+fromCTraceToGraphNode (G.TSeq c1 c2)
+  = let t1 = fromCTraceToGraphNode c1
+        t2 = fromCTraceToGraphNode c2
+     in [Node "Sequent" "" (inject t1 t2)]
+fromCTraceToGraphNode (G.TWhileTrue b c1 c2)
+  = let tb = fromBTraceToGraphNode b
+        t1 = fromCTraceToGraphNode c1
+        t2 = fromCTraceToGraphNode c2
+     in [Node "WhileTrue" "" $ inject (inject tb t1) t2]
+fromCTraceToGraphNode (G.TWhileFalse b)
+  = [Node "WhileFalse" "" []]
+fromCTraceToGraphNode (G.TIfTrue b c)
+  = let tb = fromBTraceToGraphNode b
+        tc = fromCTraceToGraphNode c
+     in [Node "IfTrue" "" $ inject tb tc]
+fromCTraceToGraphNode (G.TIfFalse b c)
+  = let tb = fromBTraceToGraphNode b
+        tc = fromCTraceToGraphNode c
+     in [Node "IfFalse" "" $ inject tb tc]
+
+
+inject :: [GraphNode] -> [GraphNode] -> [GraphNode]
+inject [] g2 = g2
+inject [Node n p c] g2 = [Node n p $ inject c g2]
+
+
+fromATraceToGraphNode :: G.ArithTrace -> [GraphNode]
+fromATraceToGraphNode (G.TNum i)
+  = [Node ("Number " <> T.pack (show i)) "" []]
+fromATraceToGraphNode (G.TRead v maybeA)
+  = [Node ("VarRead " <> T.pack v <> T.pack (show maybeA)) "" []]
+fromATraceToGraphNode (G.TAdd a1 a2)
+  = let t1 = fromATraceToGraphNode a1
+        t2 = fromATraceToGraphNode a2
+     in [Node "Add " "" $ inject t1 t2]
+fromATraceToGraphNode (G.TSub a1 a2)
+  = let t1 = fromATraceToGraphNode a1
+        t2 = fromATraceToGraphNode a2
+     in [Node "Sub " "" $ inject t1 t2]
+
+
+fromBTraceToGraphNode :: G.BoolTrace -> [GraphNode]
+fromBTraceToGraphNode G.TTruth = [Node "Truth" "" []]
+fromBTraceToGraphNode G.TFalsum = [Node "Falsum" "" []]
+fromBTraceToGraphNode (G.TEq a1 a2)
+  = let t1 = fromATraceToGraphNode a1
+        t2 = fromATraceToGraphNode a2
+     in [Node "Equality" "" $ inject t1 t2]
+fromBTraceToGraphNode (G.TLEq a1 a2)
+  = let t1 = fromATraceToGraphNode a1
+        t2 = fromATraceToGraphNode a2
+     in [Node "LessEqual" "" $ inject t1 t2]
+fromBTraceToGraphNode (G.TNot bt)
+  = let t = fromBTraceToGraphNode bt
+     in [Node "Not" "" $ t]
+fromBTraceToGraphNode (G.TAnd b1 b2)
+  = let t1 = fromBTraceToGraphNode b1
+        t2 = fromBTraceToGraphNode b2
+     in [Node "And" "" $ inject t1 t2]
 
 data GraphNode  = Node { name :: T.Text
                       , parent :: T.Text
                       , children :: [GraphNode]
                       }
-  deriving (Show,Eq,G.Generic)
+  deriving (Show, Eq, G.Generic, A.FromJSON, A.ToJSON)
 
-instance A.FromJSON GraphNode
-instance A.ToJSON GraphNode
 
 -- convertToJSON :: ArithExpr -> GraphNode
 -- convertToJSON  AHole = Node "AHole" Nothing Nothing
@@ -153,14 +256,14 @@ instance A.ToJSON GraphNode
 
 
 
-exprToString :: String -> ArithExpr -> T.Text
-exprToString parent AHole =
+exprToString :: String -> G.ArithExpr -> T.Text
+exprToString parent G.AHole =
   "[{\"name\":\"Top Level: " <> T.pack "AHole" <> " \",\"parent\":\"null\"}]"
-exprToString parent (Num i) =
+exprToString parent (G.Num i) =
   "[{\"name\":\"Top Level: " <> T.pack (show i)  <> " \",\"parent\":\"null\"}]"
-exprToString parent (Var v) =
+exprToString parent (G.Var v) =
   "[{\"name\":\"Top Level: " <> T.pack v  <> " \",\"parent\":\"null\"}]"
-exprToString parent (Add a1 a2) =
+exprToString parent (G.Add a1 a2) =
   "[{\"name\":\"Top Level: ADD \",\"parent\":\"null\",\"children\":[{\"name\":\"Level 2: B\",\"parent\":\"Top Level\"}]}]"
 
 

@@ -6,6 +6,8 @@ import BackwardSlice
 import TestExpr
 import Smt
 
+import Parser
+
 
 arithTestTrace :: ArithTrace
 arithTestTrace = (TAdd 
@@ -53,9 +55,9 @@ prog =
         rAsn 
         (Seq whlB ifR)
 
-strToComTest :: Comand
+strToComTest :: Command
 strToComTest = extractCommands progStr
-strToComTestAnswer :: Comand
+strToComTestAnswer :: Command
 strToComTestAnswer = prog
 
 -----------Eval & Backward from Paper ---------------------

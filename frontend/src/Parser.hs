@@ -15,6 +15,14 @@ type Parser a = ParsecT String ParserStore Identity a
 
 -- * Implementation of the Parsec Parser
 
+
+extractCommands :: String -> Command
+extractCommands codeAsStr =
+  case runWith commandsExpr' codeAsStr of
+    Right ast -> ast
+    Left _    -> error "parser error" 
+
+
 -- | top-level function for using the top-level parser for parsing mini-code as string-input
 runWith :: Parser a -> String -> Either ParseError a
 runWith p s = runIdentity $ runParserT p ParserStore "<interactive>" $clearWhiteSpace s

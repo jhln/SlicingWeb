@@ -192,11 +192,7 @@ testProg1 =
 
 smtProg ::String
 smtProg = "i:=0;r:=0;while(i<=n)do{r:=(r+i);i:=(i+1)}"
-extractCommands :: String -> Command
-extractCommands codeAsStr =
-  case runWith commandsExpr' codeAsStr of
-    Right ast -> ast
-    Left _    -> error "parser error" 
+
 
 
 enumCommands :: Int -> Command -> [(Command, Int)]
