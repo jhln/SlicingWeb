@@ -1,4 +1,5 @@
 // mainly stolen/adapted from https://bl.ocks.org/d3noob/8375092
+var startProgramCode = "r := a; while ( b <= r ) do { q := (q + 1); r := (r - b)}; if ( ! (r = 0) ) then {res := 0} else {res := 1}"
 var sampleTreeData = [
   {
     "name": "Top Level",

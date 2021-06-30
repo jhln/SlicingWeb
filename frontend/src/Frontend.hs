@@ -66,7 +66,8 @@ frontend = Frontend
       elAttr "diagram" ("id" =: "diagram") blank
 
       -- set code area to initial text 
-      executeJS "document.getElementById(\"codeMirror\").value=JSON.stringify(sampleTreeData)"
+      -- executeJS "document.getElementById(\"codeMirror\").value=JSON.stringify(sampleTreeData)"
+      executeJS "document.getElementById(\"codeMirror\").value=startProgramCode"
 
       -- listens for changes in programText and invokes showProgram (updating the tree)
       void $ dyn (showProgram <$> (value $ programText))
@@ -97,7 +98,7 @@ showProgram t = do
 
 parse :: T.Text -> G.Command
 parse t = extractCommands
-        $ T.unpack progStr
+        $ T.unpack t
 exec :: G.Command -> (G.CommandTrace, G.State)
 exec = evalC orgInState
 -- L [Node "TopLevel" "null" []]
